@@ -1,0 +1,29 @@
+Venus
+1. CustomerServiceReview
+{
+  id: UUID, PK
+  service_id: UUID, FK (services)
+  customer_id: UUID, FK (customers)
+  comment: String, nullable
+  rate: Integer (1, 2, 3, 4, or 5)
+  deleted_at: DateTime, nullable
+  state: TinyInt, default (1)
+}
+2. CustomerServiceLog::Should registered at service booking/subscription
+{
+  id: UUID, PK
+  service_id: UUID, FK (services)
+  customer_id: UUID, FK (customers)
+  start_date: Date
+  end_date: Date
+  days: Integer, default (0)
+  amount: float, default(0.00)
+  is_paid: Boolean, default (false)
+  paid_at: Date, nullable
+  deleted_at: DateTime, nullable
+  state: TinyInt, default (1)
+} 
+Note: 
+  - Days shall be calculated from the start and end dates. 
+  - It shall be updated on closing/extending service subscription/booking. 
+  - Set state into -1 when booking/subscription is canceled
