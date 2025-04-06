@@ -312,7 +312,7 @@ Developed By AMA
           <h5 v-if="!order_holder.order.length"> <span><i class="fas fa-print" style="float:right;margin-left:10px;font-size:2em;" @click="PrintData" v-if="printing==0"></i></span></h5>
     </div>
     <div>
-      <h3 class="casher_name" v-if="!order_holder.order.length"> Casher:<span style="font-size: 1.7em;font-size: bolder;">{{display_name}}</span></h3>
+      <h3 class="casher_name" v-if="!order_holder.store.length"> Casher:<span style="font-size: 1.7em;font-size: bolder;">{{display_name}}</span></h3>
       <h3 v-if='order_holder.created_at'>Date   :{{order_holder.created_at.split('T')[0]+'/'+order_holder.created_at.split('T')[1].split('.')[0]}}</h3>
       <h3>Order   :{{ order_holder.index_holder }}</h3>
       <h3  v-if="order_holder.waiter">{{!order_holder.isdelivery?'Waiter':'Delivery'}} :<span style="font-size: 1.7em;font-size: bolder;">{{ order_holder.waiter.first_name+' '+order_holder.waiter.middle_name+' '+order_holder.waiter.last_name }}</span> </h3>
@@ -343,7 +343,47 @@ Developed By AMA
 +251943236237
 </div>
       </b-card>
-  
+
+
+<div style="page-break-before: always !important;" v-if="order_holder.other.length"></div>
+      <b-card style="color:black;border: 0;border-radius: 0;"   v-if="order_holder.other.length">
+<div style="display: flex;justify-content: space-between;">
+        <div>
+          <img src="shege showcase2.png" alt="" style="height: 200px;width:200px;">
+          <h5 v-if="!order_holder.order.length &&!order_holder.store.length"> <span><i class="fas fa-print" style="float:right;margin-left:10px;font-size:2em;" @click="PrintData" v-if="printing==0"></i></span></h5>
+    </div>
+    <div>
+      <h3 class="casher_name" v-if="!order_holder.other.length"> Casher:<span style="font-size: 1.7em;font-size: bolder;">{{display_name}}</span></h3>
+      <h3 v-if='order_holder.created_at'>Date   :{{order_holder.created_at.split('T')[0]+'/'+order_holder.created_at.split('T')[1].split('.')[0]}}</h3>
+      <h3>Order   :{{ order_holder.index_holder }}</h3>
+      <h3  v-if="order_holder.waiter">{{!order_holder.isdelivery?'Waiter':'Delivery'}} :<span style="font-size: 1.7em;font-size: bolder;">{{ order_holder.waiter.first_name+' '+order_holder.waiter.middle_name+' '+order_holder.waiter.last_name }}</span> </h3>
+      <h3  v-if="order_holder.isdelivery">Phone Number :<span style="font-size: 1.7em;font-size: bolder;">{{ order_holder.phone_number }}</span> </h3>
+      <h3 v-if="order_holder.table_name">Table number : <span class="badge badge-primary" style="font-size: 1.7em;font-size: bolder;">{{ order_holder.table_name }}</span> </h3>
+    </div>
+    </div>
+<table class="table table-sm table-striped" >
+<thead style="background-color: transparent !important;">
+<tr>
+<!-- <th scope="col" style="text-align: left !important;width: 10% !important;">#</th> -->
+<th scope="col" style="text-align: left !important;width: 30% !important;">Order</th>
+<th scope="col" style="text-align: left !important;width: 10% !important;" class="last">Amount</th>
+</tr>
+</thead>
+<tbody>
+<tr v-for="ord,index in order_holder.other" :key="index">
+<!-- <td scope="row">{{ index+1 }}</td> -->
+<td>{{ord.menu?ord.menu.name:ord.orders}}</td>
+<td class="last">{{ord.order}}</td>
+</tr>
+</tbody>
+</table>
+<div style="text-align:center;font-size:1em;margin-top:20px;" id="footer_display">
+Developed By AMA
+</div>
+<div style="text-align:center;font-size:1em;" id="footer_display">
++251943236237
+</div>
+      </b-card>
   </div>
 </b-modal>
   
@@ -419,7 +459,7 @@ export default {
       active_menu_index:-1,
       categorys: [],
       menus:[],
-      order_holder:{store:[],order:[]},
+      order_holder:{store:[],order:[],other:[]},
       selected_order:[],
       order_data:[],
       display: false,
@@ -475,6 +515,7 @@ export default {
         this.order_holder=this.$store.getters['admin/Getorder']
         if(this.order_holder.length){
         this.order_holder['store']=[]
+        this.order_holder['other']=[]
         this.isupdate=true
         this.total_cash=Number(this.order_holder[0].total_price).toFixed(2);
         this.table_num=this.order_holder[0].table_name
@@ -724,7 +765,7 @@ export default {
       this.selected_order.splice(this.selected_order.indexOf(menu.id),1)
       }else if(this.selected_order.indexOf(menu.id)==-1){
       this.selected_order.push(menu.id)
-        this.order_data.push({'menu':{name:menu.name,'price':menu.price,'menu_id':menu.id,'item_id':menu.item_id,'tokichen':menu.tokichen},'order':1,remark:''})
+        this.order_data.push({'menu':{name:menu.name,'price':menu.price,'menu_id':menu.id,'item_id':menu.item_id,'tokichen':menu.tokichen,'from_data':menu.from_data},'order':1,remark:''})
       this.total_cash=this.total_cash*1+menu.price
       }
     },

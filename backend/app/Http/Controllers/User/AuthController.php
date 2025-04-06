@@ -30,7 +30,7 @@ class AuthController extends Controller
     public function login(Request $request)
     {   
         $this->validate($request,UserRule::LoginRule);
-        $this->checkTooManyFailedAttempts();
+       
         $user = (new User)->AuthenticateUser($request);
         if (!$user||$user->state!=1||$user->role=='Waitre'){
             return $this->TestAutorization();
@@ -40,7 +40,6 @@ class AuthController extends Controller
                 return $this->TestAutorization();
             }
             $token=Auth::login($user);
-            RateLimiter::clear($this->throttleKey());
             return $this->respondWithToken($token,Auth::user()->role,$user);
         } catch (Exception $error) {
             return $this->ErrorResponse([
@@ -63,7 +62,6 @@ class AuthController extends Controller
         return Str::lower(request('email')) . '|' . request()->ip();
     }
     protected function TestAutorization(){
-        RateLimiter::hit($this->throttleKey(), $seconds = 60);
         return $this->ErrorResponse(['username'=>['wrong username or password !']],422);
     }
     public function checkTooManyFailedAttempts()

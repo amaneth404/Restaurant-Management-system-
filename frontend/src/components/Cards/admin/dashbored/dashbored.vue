@@ -406,7 +406,7 @@
 </div>
       </b-col>
     </b-row>
-    <div>
+    <div v-if="$store.getters.role=='Admin'">
       <h3>Detailed Report</h3>
       <div class="panel-body table-responsive">
         <datatable
@@ -629,6 +629,7 @@ json_fields_payed:{
   },
   methods: {
     getorders(orders){
+    console.log(orders,'aman')
       var holder=0
       orders.forEach(element => {
         holder+=element.casher.length*1

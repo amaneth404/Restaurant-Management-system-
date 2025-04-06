@@ -415,8 +415,10 @@ class ReportController extends Controller
         $after=Carbon::parse(explode(' ',$date)[0].' 07:00','Africa/Nairobi')->setTimezone('UTC');
         $now=Carbon::parse(explode(' ',$after)[0].' 07:00','Africa/Nairobi')->setTimezone('UTC')->subDays($x);
     }else{
-        $now=Carbon::parse($request->from);
-        $after=Carbon::parse($request->to);
+        $now = Carbon::parse($request->from)->format('Y-m-d H:i:s');
+        $after = Carbon::parse($request->to)->format('Y-m-d H:i:s');
+        $now=Carbon::parse($now,'Africa/Nairobi')->setTimezone('UTC');
+        $after=Carbon::parse($after,'Africa/Nairobi')->setTimezone('UTC');
     }
     $query=[];
     $queryReport = [
@@ -433,40 +435,78 @@ class ReportController extends Controller
             $queryReport=[['isreported','=', $request->reported_date]];
         }
     }
+    $casher_report_holder=[];
+    if(Auth::user()->role=='Casher'){
+        $casher_report_holder=['aut_id'=>Auth::user()->id,'given'=>0];
+        $queryReport=[];
+    }
     // return [$after,$now];
     // return $queryReport;
     $TotalCash=TotalCash::where($queryReport)->sum('money');
-    $menu_report = MenuCategory::whereHas('menu', function ($query) use ($queryReport) {
-        // Filter only those menus that have at least one casher that matches the queryReport conditions
-        $query->whereHas('casher', function ($query) use ($queryReport) {
-            $query->where($queryReport);
-        });
-    })
-    ->with(['menu' => function($query) use ($queryReport) {
-        // Eager load only the menus that have at least one casher matching the conditions
-        $query->with(['casher' => function ($query) use ($queryReport) {
-            $query->where('isflaged',0)->where('state',0)->where($queryReport);
-        }]);
-    }])->get();
-    
-    $report_e=Expense::where($queryReport)->sum('amount');
-  
-    $report_s=Salary::where($queryReport)->sum('money');
-    $report_c=Credit::where($queryReport)->where('state',0)->sum('money');
-    $report_u=User::where('state',1)->sum('credit');
-    if(Auth::user()->role!='Admin'){
-        $queryReport[] =['aut_id','=', Auth::user()->id];
+    $cashers = Casher::where($casher_report_holder)->where($queryReport)
+    ->where('state', 0)
+    ->get();
+
+// Step 3: Process Data in PHP (Grouping & Summing)
+$non_uuid_orders = $cashers->filter(function ($casher) {
+    return !preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/', $casher->orders);
+});
+$total_price = $non_uuid_orders->sum('order_price');
+$menu1=[];
+foreach($non_uuid_orders as $a){
+    $total_price+=$a->order_price;
+    $menu1[]=['name'=>$a->orders,'casher'=>[$a],'price'=>$a->order_price,'cost'=>0];
+}
+
+
+$menu_report = MenuCategory::whereHas('menu', function ($query) use ($cashers) {
+    $query->whereIn('id', $cashers->pluck('orders'));
+})->with('menu')->get();
+foreach($menu_report as $rep){
+    foreach($rep->menu as $menu){
+        $menu['casher']=$cashers->where('orders', $menu->id)->values()->toArray();
     }
-    $report_g=Casher::where($queryReport)->where('state',0)->where('is_gift',1)->sum('price');
-    $report_credit=Casher::where($queryReport)->where('state',0)->where('credit','!=','0')->sum('price');
-    $report_b=Casher::where($queryReport)->where('state',0)->wherenotnull('bank')->select(DB::raw('SUM(bank_money) as price'))->first();
-    $report_d=Casher::where($queryReport)->where('state',0)->where('isdelivery',0)->select(DB::raw('count(*) as orders'),DB::raw('SUM(price) as price'),DB::raw('MAX(isflaged) as flag'))->groupBy('isflaged')->get();
-    $report_dd=Casher::where($queryReport)->where('state',0)->where('isdelivery',1)->select(DB::raw('count(*) as orders'),DB::raw('SUM(price) as price'),DB::raw('SUM(fee) as fee'),DB::raw('MAX(isflaged) as flag'))->groupBy('isflaged')->get();
+}
+
+
+$menu_report[] = ['name' => 'Other', 'menu' =>$menu1];
+
+// Step 4: Calculate Other Reports in PHP
+$report_e = Expense::whereBetween('created_at', [$now, $after])->sum('amount');
+$report_s = Salary::whereBetween('created_at', [$now, $after])->sum('money');
+$report_c = Credit::whereBetween('created_at', [$now, $after])->where('state', 0)->sum('money');
+$report_u = User::where('state', 1)->sum('credit');
+
+$report_g = $cashers->where('is_gift', 1)->sum('price');
+$report_credit = $cashers->where('credit', '!=', 0)->sum('price');
+$report_b['price'] = $cashers->sum('bank_money');
+
+$report_d = $cashers->where('isdelivery', 0)
+    ->groupBy('isflaged')
+    ->map(function ($group) {
+        return [
+            'orders' => $group->count(),
+            'price' => $group->sum('price'),
+            'flag' => $group->max('isflaged')
+        ];
+    });
+
+$report_dd = $cashers->where('isdelivery', 1)
+    ->groupBy('isflaged')
+    ->map(function ($group) {
+        return [
+            'orders' => $group->count(),
+            'price' => $group->sum('price') - $group->sum('fee'),
+            'fee' => $group->sum('fee'),
+            'flag' => $group->max('isflaged')
+        ];
+    });
     foreach($report_dd as $rep){
         $rep->price-=$rep->fee;
     }
     return $this->SuccessResponse([$report_d,$report_dd,$report_e,$report_s,$report_c,$report_u,$report_g,$report_b,$TotalCash,$menu_report,$report_credit],200);
     }
+   
     
     public function ExportExpensese(Request $request,$id){
         $x=1;
@@ -533,32 +573,64 @@ class ReportController extends Controller
    // return [$after,$now];
     // return $queryReport;
     $TotalCash=TotalCash::where($queryReport)->sum('money');
-    $menu_report = MenuCategory::whereHas('menu', function ($query) use ($queryReport) {
-        // Filter only those menus that have at least one casher that matches the queryReport conditions
-        $query->whereHas('casher', function ($query) use ($queryReport) {
-            $query->where($queryReport);
-        });
-    })
-    ->with(['menu' => function($query) use ($queryReport) {
-        // Eager load only the menus that have at least one casher matching the conditions
-        $query->with(['casher' => function ($query) use ($queryReport) {
-            $query->where('isflaged',0)->where('state',0)->where($queryReport);
-        }]);
-    }])->get();
-    
-    $report_e=Expense::where($queryReport)->sum('amount');
-  
-    $report_s=Salary::where($queryReport)->sum('money');
-    $report_c=Credit::where($queryReport)->where('state',0)->sum('money');
-    $report_u=User::where('state',1)->sum('credit');
-    if(Auth::user()->role!='Admin'){
-        $queryReport[] =['aut_id','=', Auth::user()->id];
+    $cashers = Casher::where($queryReport)
+    ->where('state', 0)
+    ->get();
+
+// Step 3: Process Data in PHP (Grouping & Summing)
+$non_uuid_orders = $cashers->filter(function ($casher) {
+    return !preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/', $casher->orders);
+});
+$total_price = $non_uuid_orders->sum('order_price');
+$menu1=[];
+foreach($non_uuid_orders as $a){
+    $total_price+=$a->order_price;
+    $menu1[]=['name'=>$a->orders,'casher'=>[$a],'price'=>$a->order_price,'cost'=>0];
+}
+
+
+$menu_report = MenuCategory::whereHas('menu', function ($query) use ($cashers) {
+    $query->whereIn('id', $cashers->pluck('orders'));
+})->with('menu')->get();
+foreach($menu_report as $rep){
+    foreach($rep->menu as $menu){
+        $menu['casher']=$cashers->where('orders', $menu->id)->values()->toArray();
     }
-    $report_g=Casher::where($queryReport)->where('state',0)->where('is_gift',1)->sum('price');
-    $report_credit=Casher::where($queryReport)->where('state',0)->where('credit','!=','0')->sum('price');
-    $report_b=Casher::where($queryReport)->where('state',0)->wherenotnull('bank')->select(DB::raw('SUM(bank_money) as price'))->first();
-    $report_d=Casher::where($queryReport)->where('state',0)->where('isdelivery',0)->select(DB::raw('count(*) as orders'),DB::raw('SUM(price) as price'),DB::raw('MAX(isflaged) as flag'))->groupBy('isflaged')->get();
-    $report_dd=Casher::where($queryReport)->where('state',0)->where('isdelivery',1)->select(DB::raw('count(*) as orders'),DB::raw('SUM(price) as price'),DB::raw('SUM(fee) as fee'),DB::raw('MAX(isflaged) as flag'))->groupBy('isflaged')->get();
+}
+
+
+$menu_report[] = ['name' => 'Other', 'menu' =>$menu1];
+
+// Step 4: Calculate Other Reports in PHP
+$report_e = Expense::whereBetween('created_at', [$now, $after])->sum('amount');
+$report_s = Salary::whereBetween('created_at', [$now, $after])->sum('money');
+$report_c = Credit::whereBetween('created_at', [$now, $after])->where('state', 0)->sum('money');
+$report_u = User::where('state', 1)->sum('credit');
+
+$report_g = $cashers->where('is_gift', 1)->sum('price');
+$report_credit = $cashers->where('credit', '!=', 0)->sum('price');
+$report_b['price'] = $cashers->sum('bank_money');
+
+$report_d = $cashers->where('isdelivery', 0)
+    ->groupBy('isflaged')
+    ->map(function ($group) {
+        return [
+            'orders' => $group->count(),
+            'price' => $group->sum('price'),
+            'flag' => $group->max('isflaged')
+        ];
+    });
+
+$report_dd = $cashers->where('isdelivery', 1)
+    ->groupBy('isflaged')
+    ->map(function ($group) {
+        return [
+            'orders' => $group->count(),
+            'price' => $group->sum('price') - $group->sum('fee'),
+            'fee' => $group->sum('fee'),
+            'flag' => $group->max('isflaged')
+        ];
+    });
     foreach($report_dd as $rep){
         $rep->price-=$rep->fee;
     }
@@ -572,7 +644,7 @@ $report_g = Casher::where('state', 0)->where('isflaged', 0)
     DB::raw('DATE(created_at) as day'),
     DB::raw('SUM(CASE WHEN is_gift = 0 THEN price ELSE 0 END) as price'), // Sum price only if not a gift
     DB::raw('SUM(CASE WHEN is_gift = 0 THEN fee ELSE 0 END) as fee')      // Sum fee only if not a gift
-)
+)->limit(1000)
 ->groupBy('day')
 ->get();
 
@@ -581,7 +653,7 @@ $report_u = Casher::where('state', 0)->where('credit','!=','0')
 ->select(
     DB::raw('DATE(created_at) as day'),
     DB::raw('SUM(price) as total_credit')
-)
+)->limit(1000)
 ->groupBy('day')
 ->get();
 // Expense report grouped by day
@@ -589,7 +661,7 @@ $report_e = Expense::where('isreported', 0)
 ->select(
     DB::raw('DATE(created_at) as day'),
     DB::raw('SUM(amount) as total_expense')
-)
+)->limit(1000)
 ->groupBy('day')
 ->get();
 
@@ -598,7 +670,7 @@ $report_s = Salary::where('isreported', 0)
 ->select(
     DB::raw('DATE(created_at) as day'),
     DB::raw('SUM(money) as total_salary')
-)
+)->limit(1000)
 ->groupBy('day')
 ->get();
 
@@ -608,7 +680,7 @@ $report_c = Credit::where('isreported', 0)
 ->select(
     DB::raw('DATE(created_at) as day'),
     DB::raw('SUM(money) as total_credit_money')
-)
+)->limit(1000)
 ->groupBy('day')
 ->get();
 $dailyReport = [];

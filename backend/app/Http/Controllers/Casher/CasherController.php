@@ -23,7 +23,7 @@ use App\Services\FileService;
 use Illuminate\Support\Facades\DB;
 class CasherController extends Controller
 {
-    public function index($type=0){
+    public function index(Request $request,$type=0){
       
         // return [$user_id,'aman'];      
         if($type==0){
@@ -31,29 +31,33 @@ class CasherController extends Controller
             $after=Carbon::parse(explode(' ',$date)[0].' 00:00');
             $now=Carbon::parse(explode(' ',$after)[0].' 00:00')->subDays(1);
             $Casher=Casher::where(function($query)  {
-                $query->whereIN('state', [1,-1])
-                      ->orWhere([['state','=',0],['isflaged','=',1]]);
-            })->where('created_at','>=',$now)->with('waiter')->select('waiter as waiter','folder_id as folder_id',DB::raw('count(*) as total'),DB::raw('0 as number'),DB::raw('sum(order_price) as order_price'),DB::raw('Max(isdelivery) as isdelivery'),DB::raw('Max(isflaged) as isflaged'),DB::raw('Max(state) as state'),DB::raw('Max(fee) as fee'),DB::raw('Max(phone_number) as phone_number'),DB::raw('Max(table_name) as table_name'))->orderBy('created_at','desc')->groupBy('waiter','folder_id')->paginate(200);
+                $query->whereIN('state', [1,-1]);
+            })->where('created_at','>=',$now)->with('waiter')->select('waiter as waiter','folder_id as folder_id',DB::raw('count(*) as total'),DB::raw('0 as number'),DB::raw('sum(order_price) as order_price'),DB::raw('Max(isdelivery) as isdelivery'),DB::raw('min(isflaged) as isflaged'),DB::raw('Max(state) as state'),DB::raw('Max(fee) as fee'),DB::raw('Max(phone_number) as phone_number'),DB::raw('Max(table_name) as table_name'))->orderBy('created_at','desc')->groupBy('waiter','folder_id')->paginate(200);
         }else if($type==1){
-            $date=Carbon::now()->addDay(1);
-            $after=Carbon::parse(explode(' ',$date)[0].' 00:00');
-            $now=Carbon::parse(explode(' ',$after)[0].' 00:00')->subDays(1);
-            $Casher=Casher::whereIn('state',[1,-1])->where('created_at','>=',$now)->where('isflaged',1)->with('waiter')->select('waiter as waiter','folder_id as folder_id',DB::raw('count(*) as total'),DB::raw('0 as number'),DB::raw('sum(order_price) as order_price'),DB::raw('Max(isdelivery) as isdelivery'),DB::raw('Max(isflaged) as isflaged'),DB::raw('Max(state) as state'),DB::raw('Max(fee) as fee'),DB::raw('Max(phone_number) as phone_number'),DB::raw('Max(table_name) as table_name'))->orderBy('created_at')->groupBy('waiter','folder_id')->paginate(200);
+            $Casher=Casher::where('state',0)->where('given',0)->where('isflaged',1)->with('waiter')->select('waiter as waiter','folder_id as folder_id',DB::raw('count(*) as total'),DB::raw('0 as number'),DB::raw('sum(order_price) as order_price'),DB::raw('Max(isdelivery) as isdelivery'),DB::raw('min(isflaged) as isflaged'),DB::raw('Max(state) as state'),DB::raw('Max(fee) as fee'),DB::raw('Max(phone_number) as phone_number'),DB::raw('Max(table_name) as table_name'))->orderBy('created_at')->groupBy('waiter','folder_id')->paginate(200);
         }else if($type==2){
-            $date=Carbon::now()->addDay(1);
-            $after=Carbon::parse(explode(' ',$date)[0].' 00:00');
-            $now=Carbon::parse(explode(' ',$after)[0].' 00:00')->subDays(1);
-            $Casher=Casher::where('created_at','>=',$now)->where('state',0)->where('isflaged',0)->with('waiter')->select('waiter as waiter','folder_id as folder_id',DB::raw('count(*) as total'),DB::raw('0 as number'),DB::raw('sum(order_price) as order_price'),DB::raw('Max(isdelivery) as isdelivery'),DB::raw('Max(fee) as fee'),DB::raw('Max(isflaged) as isflaged'),DB::raw('Max(state) as state'),DB::raw('Max(phone_number) as phone_number'),DB::raw('Max(table_name) as table_name'))->orderBy('created_at')->groupBy('waiter','folder_id')->paginate(200);
+            $query=['given'=>0];
+            if($request->from){
+                $now = Carbon::parse($request->from)->format('Y-m-d H:i:s');
+                $after = Carbon::parse($request->to)->format('Y-m-d H:i:s');
+                $now=Carbon::parse($now,'Africa/Nairobi')->setTimezone('UTC');
+                $after=Carbon::parse($after,'Africa/Nairobi')->setTimezone('UTC');
+            $query= [
+                ['created_at','>',$now],
+                ['created_at','<',$after]
+            ];
+            }
+            $Casher=Casher::where($query)->where('state',0)->where('isflaged',0)->with('waiter')->select('waiter as waiter','folder_id as folder_id',DB::raw('count(*) as total'),DB::raw('0 as number'),DB::raw('sum(order_price) as order_price'),DB::raw('Max(isdelivery) as isdelivery'),DB::raw('Max(fee) as fee'),DB::raw('min(isflaged) as isflaged'),DB::raw('Max(state) as state'),DB::raw('Max(phone_number) as phone_number'),DB::raw('Max(table_name) as table_name'),DB::raw('Max(bank) as bank'))->orderBy('created_at')->groupBy('waiter','folder_id')->paginate(200);
         }else if($type==3){
              $date=Carbon::now()->addDay(1);
             $after=Carbon::parse(explode(' ',$date)[0].' 00:00');
             $now=Carbon::parse(explode(' ',$after)[0].' 00:00')->subDays(1);
-            $Casher=Casher::whereIn('state',[1,-1])->where('created_at','>=',$now)->where('isflaged',0)->where('isdelivery',1)->with('waiter')->select('waiter as waiter','folder_id as folder_id',DB::raw('count(*) as total'),DB::raw('0 as number'),DB::raw('sum(order_price) as order_price'),DB::raw('Max(isdelivery) as isdelivery'),DB::raw('Max(isflaged) as isflaged'),DB::raw('Max(state) as state'),DB::raw('Max(fee) as fee'),DB::raw('Max(phone_number) as phone_number'),DB::raw('Max(table_name) as table_name'))->orderBy('created_at')->groupBy('waiter','folder_id')->paginate(200);
+            $Casher=Casher::whereIn('state',[1,-1])->where('created_at','>=',$now)->where('isflaged',0)->where('isdelivery',1)->with('waiter')->select('waiter as waiter','folder_id as folder_id',DB::raw('count(*) as total'),DB::raw('0 as number'),DB::raw('sum(order_price) as order_price'),DB::raw('Max(isdelivery) as isdelivery'),DB::raw('min(isflaged) as isflaged'),DB::raw('Max(state) as state'),DB::raw('Max(fee) as fee'),DB::raw('Max(phone_number) as phone_number'),DB::raw('Max(table_name) as table_name'))->orderBy('created_at')->groupBy('waiter','folder_id')->paginate(200);
         }else if($type==4){
             $date=Carbon::now()->addDay(1);
             $after=Carbon::parse(explode(' ',$date)[0].' 00:00');
             $now=Carbon::parse(explode(' ',$after)[0].' 00:00')->subDays(1);
-            $Casher=Casher::where('created_at','>=',$now)->where('state',0)->where('isflaged',0)->where('isdelivery',1)->with('waiter')->select('waiter as waiter','folder_id as folder_id',DB::raw('count(*) as total'),DB::raw('0 as number'),DB::raw('sum(order_price) as order_price'),DB::raw('Max(isdelivery) as isdelivery'),DB::raw('Max(fee) as fee'),DB::raw('Max(isflaged) as isflaged'),DB::raw('Max(state) as state'),DB::raw('Max(phone_number) as phone_number'),DB::raw('Max(table_name) as table_name'))->orderBy('created_at')->groupBy('waiter','folder_id')->paginate(200);
+            $Casher=Casher::where('created_at','>=',$now)->where('state',0)->where('isflaged',0)->where('isdelivery',1)->with('waiter')->select('waiter as waiter','folder_id as folder_id',DB::raw('count(*) as total'),DB::raw('0 as number'),DB::raw('sum(order_price) as order_price'),DB::raw('Max(isdelivery) as isdelivery'),DB::raw('Max(fee) as fee'),DB::raw('min(isflaged) as isflaged'),DB::raw('Max(state) as state'),DB::raw('Max(phone_number) as phone_number'),DB::raw('Max(table_name) as table_name'))->orderBy('created_at')->groupBy('waiter','folder_id')->paginate(200);
          }
 
         return $this->SuccessResponse($Casher,200);
@@ -160,6 +164,7 @@ class CasherController extends Controller
         return $this->SuccessResponse('success',200);
     }
     public function Payed(Request $request,$id){
+        
         Casher::where('folder_id',$id)->where('state','!=',0)->update(['state'=>0]);
         if($request->bank){
         $Casher=Casher::where('folder_id',$id)->where('state',0)->first();
@@ -175,7 +180,7 @@ class CasherController extends Controller
         foreach($cashers as $casher){
             $casher['credit']=Casher::where('aut_id',$casher->aut_id)->where('state',0)->where('isflaged',0)->where('given',0)->where('credit','!=','0')->sum('price');
             $casher['gift']=Casher::where('state',0)->where('is_gift',1)->where('given',0)->where('isflaged',0)->where('w_given',0)->where('aut_id',$casher->aut_id)->sum('price');
-            $casher['bank']=Casher::where('aut_id',$casher->aut_id)->where('state',0)->where('isflaged',0)->where('given',0)->wherenotnull('bank')->sum('bank_money');
+            $casher['bank']=Casher::where('aut_id',$casher->aut_id)->where('state',0)->where('given',0)->sum('bank_money');
             $casher['paid']=Credit::where('casher',$casher->aut_id)->where('state',1)->sum('paid');
         }
         return $cashers;
@@ -247,6 +252,7 @@ class CasherController extends Controller
         $waiter=null;
         $order_holder=[];
         $store_order=[];
+        $other_order=[];
         $waiter=User::findOrfail($request->waiter);
         $counter=1;
         $folder_id=Str::uuid();
@@ -298,6 +304,11 @@ class CasherController extends Controller
         $counter++;
             if($ord['menu']['menu_id']==-1){
                 $Casher->menu;
+                if($ord['menu']['tokichen']==1){
+                    $isstore=0;
+                }else{
+                    $isstore=1;
+                }
                 // $order_holder[]= $Casher;
             }else{
                 $Casher->menu;
@@ -308,13 +319,21 @@ class CasherController extends Controller
                     $this->RequestToStore($casher_h->id,[$ord]);
                     $holder[]=$ord;
                    
+                }else{
+                    if($ord['menu']['tokichen']==-10){
+                        $isstore=2;
+                    }else if($ord['menu']['from_data']==0){
+                        $isstore=1;
+                    }
                 }
             }
         }
-        if($isstore){
+        if($isstore==1){
             $store_order[]=$ord;
-        }else{
+        }else if($isstore==0){
             $order_holder[]=$ord;
+        }else{
+            $other_order[]=$ord;
         }
         
 
@@ -324,6 +343,7 @@ class CasherController extends Controller
         $data_holder['waiter']=$waiter;
         $data_holder['order']=$order_holder;
         $data_holder['store']=$store_order;
+        $data_holder['other']=$other_order;
         $data_holder['isdelivery']=$request->isdelivery?$request->isdelivery:0;
         $data_holder['price']=$total_price;
         $data_holder['table_name']=$request->table_name;
@@ -371,7 +391,7 @@ class CasherController extends Controller
             $date=Carbon::now()->addDay(1);
             $after=Carbon::parse(explode(' ',$date)[0].' 00:00');
             $now=Carbon::parse(explode(' ',$after)[0].' 00:00')->subDays(1);
-        $Casher=Casher::where('table_name',$request->table_name)->where('created_at','>=',$now)->where('isflaged',0)->where('state',1)->get();
+        $Casher=Casher::where('folder_id','!=',$request->folder_id)->where('table_name',$request->table_name)->where('created_at','>=',$now)->where('isflaged',0)->where('state',1)->get();
         if(count($Casher)>0){
             return $this->ErrorResponse(['table_name'=>['table is alredy taken']],422);
         }
@@ -423,6 +443,7 @@ class CasherController extends Controller
         $waiter=null;
         $order_holder=[];
         $store_order=[];
+        $other_order=[];
         $waiter=User::findOrfail($request->waiter);
         $counter=1;
         $folder_id=$request->id;
@@ -471,25 +492,38 @@ class CasherController extends Controller
         $Casher->tokichen=$ord['menu']['tokichen'];
         $Casher->save();
         $counter++;
-            if($ord['menu']['menu_id']==-1){
-                $Casher->menu;
-                $order_holder[]= $Casher;
+        if($ord['menu']['menu_id']==-1){
+            $Casher->menu;
+            if($ord['menu']['tokichen']==1){
+                $isstore=0;
             }else{
-                $Casher->menu;
-                if($ord['menu']['item_id']){
-                    // $ord['order']=1;
+                $isstore=1;
+            }
+            // $order_holder[]= $Casher;
+        }else{
+            $Casher->menu;
+            if($ord['menu']['item_id']){
+                // $ord['order']=1;
+                $isstore=1;
+                $casher_h=$Casher;
+                $this->RequestToStore($casher_h->id,[$ord]);
+                $holder[]=$ord;
+               
+            }else{
+                if($ord['menu']['tokichen']==-10){
+                    $isstore=2;
+                }else if($ord['menu']['from_data']==0){
                     $isstore=1;
-                    $casher_h=$Casher;
-                    $this->RequestToStore($casher_h->id,[$ord]);
-                    $holder[]=$ord;
-                   
                 }
             }
         }
-        if($isstore){
+        }
+        if($isstore==1){
             $store_order[]=$ord;
-        }else{
+        }else if($isstore==0){
             $order_holder[]=$ord;
+        }else{
+            $other_order[]=$ord;
         }
         
 
@@ -499,11 +533,13 @@ class CasherController extends Controller
         $data_holder['waiter']=$waiter;
         $data_holder['order']=$order_holder;
         $data_holder['store']=$store_order;
+        $data_holder['other']=$other_order;
         $data_holder['isdelivery']=$request->isdelivery?$request->isdelivery:0;
         $data_holder['price']=$total_price;
         $data_holder['table_name']=$request->table_name;
         if($request->isdelivery)
         $data_holder['phone_number']=$request->phone_number;
+        $data_holder['created_at']=Carbon::now();
         return $this->SuccessResponse($data_holder,200);
         }
     public function destroy($id){

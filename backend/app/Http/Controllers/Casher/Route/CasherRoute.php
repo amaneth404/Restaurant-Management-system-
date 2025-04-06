@@ -17,13 +17,14 @@ $router->group(['prefix' => 'admin/casher','middleware'=>['admin']], function ()
 
 
     $router->get('/{type}/order',['uses'=>'Casher\CasherController@index']);
+    $router->post('/{type}/order',['uses'=>'Casher\CasherController@index']);
     $router->get('/flaged/orders/',['uses'=>'Casher\CasherController@FlagedOrders']);
     $router->get('/flaged/orders/all',['uses'=>'Casher\CasherController@FlagedOrdersAll']);
     $router->get('/payed/orders/all',['uses'=>'Casher\CasherController@PayedOrders']);
     $router->get('/flaged/delivery/orders/all',['uses'=>'Casher\CasherController@deliveryFlagedOrdersAll']);
     $router->get('/payed/delivery/orders/all',['uses'=>'Casher\CasherController@deliveryPayedOrders']);
     $router->get('/view/{id}',['uses'=>'Casher\CasherController@CasherWithOrder']);
-    $router->get('/flag/{id}',['uses'=>'Casher\CasherController@Flag']);
+    $router->get('/flag/{id}/{type}',['uses'=>'Casher\CasherController@Flag']);
     $router->get('/unflag/{id}',['uses'=>'Casher\CasherController@UnFlag']);
     $router->post('/store',['uses'=>'Casher\CasherController@store']);
     $router->post('/changeconfig',['uses'=>'Casher\CasherController@cahgeOrderConfig']);

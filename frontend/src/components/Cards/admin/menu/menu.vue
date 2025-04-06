@@ -165,8 +165,12 @@
           <has-error :form="menu" field="price"></has-error>
         </div>
         <div class="custom-control custom-switch">
-          <input type="checkbox" class="custom-control-input" id="customSwitch12" :checked="menu.tokichen==0?false:true" v-model="menu.tokichen">
+          <input type="checkbox" class="custom-control-input" id="customSwitch12" :checked="menu.tokichen>0?true:false" v-model="menu.tokichen">
           <label class="custom-control-label" for="customSwitch12">To kichen</label>
+        </div>
+        <div class="custom-control custom-switch">
+          <input type="checkbox" class="custom-control-input" id="customSwitch1245677" :checked="menu.other<0?true:false" v-model="menu.other">
+          <label class="custom-control-label" for="customSwitch1245677">To Other</label>
         </div>
           <b-button type="submit" class="btn btn-primary" style="margin-top:5px;margin-bottom:10px;width:100%;" v-if="active_cate!=-1"> {{display_menu?'Update Menu':'+ ADD Menu'}}</b-button>
           <div style="display: inline;font-size: 1.3em;" v-if="display_menu">
@@ -334,6 +338,7 @@ export default {
         name: "",
         icon:"",
         cost:0,
+        other:0,
         from_data:1,
         time:0,
         tokichen:0,
@@ -383,6 +388,10 @@ export default {
       this.menu.from_data=1
       this.active_menu=menu.id
       this.menu.fill(menu)
+      if(this.menu.tokichen<0){
+        this.menu.other=this.menu.tokichen
+        this.menu.tokichen=0
+      }
       if(!menu.time){
         this.menu.time=0
       }
@@ -487,6 +496,9 @@ export default {
     updateMenu() {
       this.menu.from_data=this.menu.from_data?1:0
       this.menu.tokichen=this.menu.tokichen?1:0
+      if(this.menu.other){
+        this.menu.tokichen=-10
+      }
       this.menu.cate_id=this.active_cate
      var form =window.VFToFD(this.menu);
       this.$store
@@ -543,6 +555,9 @@ export default {
     createMenu() {
       this.menu.from_data=this.menu.from_data?1:0
       this.menu.tokichen=this.menu.tokichen?1:0
+      if(this.menu.other){
+        this.menu.tokichen=-10
+      }
       this.menu.cate_id=this.active_cate
       var form =window.VFToFD(this.menu);
       this.$store.dispatch('admin/AdminController',{'data':form,'method':'post','api':'admin_create_menu','variable':'category'}, { root: true }).then(() => {

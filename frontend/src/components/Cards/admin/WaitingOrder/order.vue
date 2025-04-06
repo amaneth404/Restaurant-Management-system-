@@ -1,3 +1,4 @@
+
 <template>
   <div>
    <b-row no-gutters style="display: flex;align-items: center;justify-content: center;">
@@ -34,6 +35,34 @@
                  </b-input-group>
                 <!-- <input type="text" class="form-control" style="border-radius:10px;border:1px solid transparent;padding:5px;margin-bottom:50px;" placeholder="Search ..." v-model="form.username" @keyup="FilterUser"> -->
               </div>
+              <div v-if="active_order==2">
+                <div class="form-group row">
+                  <input
+                  style="margin-left:10px;margin-right:10px;"
+                    v-model="isbank"
+                    type="checkbox"
+                    :checked="isbank?true:false"
+                    @change="filteronlyBank()"
+                  /> Bank
+                  </div>
+                  <b-row no-gutters  v-if="$store.getters.role=='Admin'">
+                    <b-col md='auto' >
+                      <div style="float:left;">
+               <label  for="" style="color:black;padding-top:4px;margin-right:5px;">From :</label> <input type="datetime-local" name="" id="" placeholder="from" v-model="from" style="border:0.5px solid grey;border-radius: 5px;">
+               </div>
+                    </b-col>
+                    <b-col md='auto'>
+                      <div style="float:left;">
+               <label for="" style="color:black;padding-top:4px;margin-right:30px;margin-left:20px;">to :</label><input type="datetime-local" name="" id="" placeholder="to" v-model="to" style="border:0.5px solid grey;border-radius: 5px;">
+                      </div>
+                    </b-col>
+                    <b-col md="auto">
+                      <div >
+               <b-button class="btn btn-success btn-sm" @click="getmyorder()" style="margin-left:10px;"> Filter</b-button>
+                      </div>
+                    </b-col>
+                  </b-row>
+              </div>
              <select name="" id="" @change="changeOrder" style="background: transparent;">
              <option value="w">All Orders</option>
              <option value="wd">Waiting Delivery</option>
@@ -48,7 +77,7 @@
              <div style='padding:20px;padding-top:0;'>
          <datatable
            :columns="columns"
-           :data="orders.data"
+           :data="isbank?filtered_bank.data:orders.data"
           class="table text-nowrap table-striped"
            style="font-size:1em;color:black;"
          >
@@ -100,746 +129,797 @@
      </b-col>
    </b-row>
    <b-modal :id="'post-update-modal-order'" :size="'lg'">
-         <div style="padding-left:20px;padding-top:15px;padding-bottom:5px;border-bottom:1px solid rgba(214,214,214);font-size:1.3em;">View Order <span><i class="fas fa-times" style="float:right;margin-right:20px;margin-top:5px;color:grey;" @click="closemoadl('post-update-modal-order')"></i></span></div>
-       <div style="background-color: black;" v-if="order_holder.length">
-         <b-card style="color:black;border: 0;border-radius: 0;" id="print-card" >
-           <div style="display: flex;justify-content: space-between;">
-             <div>
-           <img src="shege showcase2.png" alt="" style="height: 200px;width:200px;">
-           <!-- <div class="logo-dis"></div> -->
-           <h5> <span><i class="fas fa-print" style="float:right;margin-left:10px;font-size:2em;" @click="PrintData" v-if="printing==0&&order_holder[0].state==1"></i></span></h5>
-         </div>
-         <div>
-           <h3 style="margin-bottom: 2px;" v-if='order_holder[0].created_at'>Date   :{{order_holder[0].created_at.split('T')[0]+'/'+order_holder[0].created_at.split('T')[1].split('.')[0]}}</h3>
-           <h3 style="margin-bottom: 2px;">Order   :{{ order_holder[0].index_holder }}</h3>
-           <h3 style="margin-bottom: 2px;"  v-if="order_holder[0].waiter">{{order_holder[0].waiter?'Waiter':'Delivery'}} :<span style="font-size: 1.7em;font-size: bolder;">{{ order_holder[0].waiter.first_name+' '+order_holder[0].waiter.middle_name+' '+order_holder[0].waiter.last_name }}</span> </h3>
-           <h3 style="margin-bottom: 2px;"  v-if="order_holder[0].isdelivery">Phone Number :<span style="font-size: 1.7em;font-size: bolder;">{{ order_holder[0].phone_number }}</span> </h3>
-           <h3 style="margin-bottom: 2px;" v-if="!order_holder[0].isdelivery">Table number : <span class="badge badge-primary" style="font-size: 1.7em;font-size: bolder;">{{ order_holder[0].table_name }}</span> </h3>
-         </div>
-         </div>
-            
-             <table class="table table-sm table-striped" style="width:100% !important;">
- <thead style="background-color: transparent !important;">
-   <tr>
-     <th scope="col" style="text-align: left !important;width: 10% !important;">#</th>
-     <th scope="col" style="text-align: left !important;width: 30% !important;">Order</th>
-     <th scope="col" style="text-align: left !important;width: 10% !important;">Amount</th>
-     <th scope="col" style="text-align: left !important;width: 10% !important;" class="last">Price</th>
-   </tr>
- </thead>
- <tbody>
-   <tr v-for="ord,index in order_holder" :key="index" style="width:100%;">
-     <td scope="row">{{ index+1 }}</td>
-     <td>{{ord.menu?ord.menu.name:ord.orders}}</td>
-     <td>{{ord.total}}</td>
-     <td class="last">{{ ord.order_price }}</td>
-   </tr>
- </tbody>
-</table>
-             <div style="padding:30px;">
-           <!-- <h5 style="text-align:left;">SubTotal <span style="float:right;">{{ Number(order_holder.price/1.15).toFixed(2) }}</span></h5> -->
-           <!-- <h5 style="text-align:left;border-top:1px solid rgba(0, 0, 0, 0.253);padding-top:10px;">Tax <span style="float:right;">{{Number(order_holder.price-(order_holder.price/1.15)).toFixed(2) }}</span></h5> -->
-           <h3 v-if="order_holder[0].isdelivery" style="text-align:left;border-top:1px solid rgba(0, 0, 0, 0.253);padding-top:10px;"><strong>Delivery Fee</strong> <span style="float:right;">{{ getDeliveryFee(order_holder) }}</span></h3>
-           <h3  v-if="order_holder[0].state==0&&order_holder[0].bank_money" style="text-align:left;border-top:1px solid rgba(0, 0, 0, 0.253);padding-top:10px;"><strong>Bank</strong> <span style="float:right;">{{ order_holder[0].bank_money}}</span></h3>
-          
-           <h3 style="text-align:left;border-top:1px solid rgba(0, 0, 0, 0.253);padding-top:10px;"><strong>Total</strong> <span style="float:right;">{{ active_order_holder.order_price*1+(active_order_holder.fee?active_order_holder.fee:0)*1}}</span></h3>
-         </div>
-         
-         <div style="text-align:center;font-size:1.2em;margin-top:20px;" id="footer_display">
-          Delivery PH : 0945488888 - 0954588888/ ACC No:1000292738618 
-          </div>
-         <div style="text-align:center;font-size:1em;margin-top:20px;" id="footer_display">
-           Developed By AMA / +251943236237 
-           </div>
-          
-           </b-card>
-           <div  style="background-color: white;"> 
-           
-           <div  v-if="order_holder[0].state==1" class="col-md-6">
-             <div  style="text-align:left;padding:20px;font-size:1.2em;color:black;">
-             <input type="checkbox" @change="type_bank=!type_bank;type=0;" :checked="type_bank?true:false">  is Bank
-           </div>
-           </div>
-           <div>
-             </div>
-           
-             
-         </div>
-         <div v-if="type" style="padding:10px;width:100%;">
-           <input style="margin-bottom:10px;" type="text" class="form-control" placeholder="full name" v-model="full_name" required> 
-           <input type="text" class="form-control" placeholder="phone number" v-model="phone_number" required> 
-         </div>
-         <div v-if="type_bank" style="padding:10px;width:100%;background:white;">
-           <select style="margin-bottom:10px;background:white;"  class="form-control"  v-model="bank" required>
-             <option value="0">Select Bank</option>
-             <option :value="bank.id" v-for="bank in banks" :key="bank.id" style="color:black;">{{bank.name}}</option>
-           </select> 
-           <input style="margin-bottom:10px;background:white;" placeholder="Money" class="form-control"  v-model="bank_money" required/>
-         </div>
-         <div>
-       <b-button v-if="order_holder[0].isflaged==0&&order_holder[0].state==1"  style="width:100%;text-align:left;margin-top:10px;background:rgb(197, 4, 4);border:0;border-radius:0px;padding:15px;" @click="payed(order_holder[0].folder_id)">Paid <span style="float:right;"><i class="fas fa-arrow-right"></i></span></b-button>
-     </div>
-       </div>
-   </b-modal>
-   <b-modal :id="'post-update-modal-order-config'" :size="'lg'">
-    <div style="padding-left:20px;padding-top:15px;padding-bottom:5px;border-bottom:1px solid rgba(214,214,214);font-size:1.3em;">Change Order <span><i class="fas fa-times" style="float:right;margin-right:20px;margin-top:5px;color:grey;" @click="closemoadl('post-update-modal-order-config')"></i></span></div>
-  <div style="background-color: black;" >
+    <div style="padding-left:20px;padding-top:15px;padding-bottom:5px;border-bottom:1px solid rgba(214,214,214);font-size:1.3em;">View Order <span><i class="fas fa-times" style="float:right;margin-right:20px;margin-top:5px;color:grey;" @click="closemoadl('post-update-modal-order')"></i></span></div>
+  <div style="background-color: black;" v-if="order_holder.length">
     <b-card style="color:black;border: 0;border-radius: 0;" id="print-card" >
-      <form
-      style="padding:30px;padding-top:15px;margin-bottom:35px;"
-     @submit.prevent="changeconfig()"
-   >
-   <div style="text-align:left;padding:10px;font-size:1.2em;">
-    <input type="checkbox" @change="configform.isdelivery=!configform.isdelivery" :checked="configform.isdelivery?true:false" class="input_holder">  <i class="fas fa-truck"></i> 
-  </div>
-  <div class="form-group row" >
-    <select  required
-    style="background-color:white !important;"
-      v-model="configform.waiter"
-      name="waiter"
-      placeholder="Waiter"
-      class="form-control"
-      :class="{ 'is-invalid': configform.errors.has('waiter') }">
-      <option value="">Select Waiter</option>
-      <option :value="user.id" v-for="user in users" :key="user.id">{{ user.first_name+' '+user.middle_name+' '+user.last_name }}</option>
-    </select>
-    <has-error :form="configform" field="waiter"></has-error>
-  </div>
-     <div class="form-group row" v-if="!configform.isdelivery">
-      <label>Table Name</label>
-      <input
-      required
-        v-model="configform.table_name"
-        name="table_name"
-        placeholder="table_name"
-        class="form-control"
-        :class="{ 'is-invalid': configform.errors.has('table_name') }"
-      />
-      <has-error :form="configform" field="table_name"></has-error>
+      <div style="display: flex;justify-content: space-between;">
+        <div>
+      <img src="shege showcase2.png" alt="" style="height: 200px;width:200px;">
+      <!-- <div class="logo-dis"></div> -->
+      <h5> <span><i class="fas fa-print" style="float:right;margin-left:10px;font-size:2em;" @click="PrintData" v-if="printing==0&&order_holder[0].state==1"></i></span></h5>
     </div>
-    <div class="form-group row" v-if="configform.isdelivery">
-      <label>Phone Number</label>
-      <input
-      required
-        v-model="configform.phone_number"
-        name="phone_number"
-        placeholder="phone_number"
-        class="form-control"
-        :class="{ 'is-invalid': configform.errors.has('phone_number') }"
-      />
-      <has-error :form="configform" field="phone_number"></has-error>
-    </div>
-    <div class="form-group row" v-if="configform.isdelivery">
-      <label>Fee</label>
-      <input
-      required
-        v-model="configform.fee"
-        name="fee"
-        placeholder="fee"
-        class="form-control"
-        :class="{ 'is-invalid': configform.errors.has('fee') }"
-      />
-      <has-error :form="configform" field="fee"></has-error>
-    </div>
-     <div  style='border-top:1px solid rgba(0.5,0.5,0.5,0.3);padding-top:10px;margin-top:15px;'>
-     <div class="float-right">
-       <b-button type="submit" class="btn-primary" >
-         Update
-       </b-button>
-     </div>
-     </div>
-   </form>
-      </b-card>
     <div>
+      <h3 style="margin-bottom: 2px;" v-if='order_holder[0].created_at'>Date   :{{order_holder[0].created_at.split('T')[0]+'/'+order_holder[0].created_at.split('T')[1].split('.')[0]}}</h3>
+      <h3 style="margin-bottom: 2px;">Order   :{{ order_holder[0].index_holder }}</h3>
+      <h3 style="margin-bottom: 2px;"  v-if="order_holder[0].waiter">{{order_holder[0].waiter?'Waiter':'Delivery'}} :<span style="font-size: 1.7em;font-size: bolder;">{{ order_holder[0].waiter.first_name+' '+order_holder[0].waiter.middle_name+' '+order_holder[0].waiter.last_name }}</span> </h3>
+      <h3 style="margin-bottom: 2px;"  v-if="order_holder[0].isdelivery">Phone Number :<span style="font-size: 1.7em;font-size: bolder;">{{ order_holder[0].phone_number }}</span> </h3>
+      <h3 style="margin-bottom: 2px;" v-if="!order_holder[0].isdelivery">Table number : <span class="badge badge-primary" style="font-size: 1.7em;font-size: bolder;">{{ order_holder[0].table_name }}</span> </h3>
+    </div>
+    </div>
+       
+        <table class="table table-sm table-striped" style="width:100% !important;">
+<thead style="background-color: transparent !important;">
+<tr>
+<th scope="col" style="text-align: left !important;width: 10% !important;">#</th>
+<th scope="col" style="text-align: left !important;width: 30% !important;">Order</th>
+<th scope="col" style="text-align: left !important;width: 10% !important;">Amount</th>
+<th scope="col" style="text-align: left !important;width: 10% !important;" class="last">Price</th>
+</tr>
+</thead>
+<tbody>
+<tr v-for="ord,index in order_holder" :key="index" style="width:100%;">
+<td scope="row">{{ index+1 }}</td>
+<td>{{ord.menu?ord.menu.name:ord.orders}}</td>
+<td>{{ord.total}}</td>
+<td class="last">{{ ord.order_price }}</td>
+</tr>
+</tbody>
+</table>
+        <div style="padding:30px;">
+      <!-- <h5 style="text-align:left;">SubTotal <span style="float:right;">{{ Number(order_holder.price/1.15).toFixed(2) }}</span></h5> -->
+      <!-- <h5 style="text-align:left;border-top:1px solid rgba(0, 0, 0, 0.253);padding-top:10px;">Tax <span style="float:right;">{{Number(order_holder.price-(order_holder.price/1.15)).toFixed(2) }}</span></h5> -->
+      <h3 v-if="order_holder[0].isdelivery" style="text-align:left;border-top:1px solid rgba(0, 0, 0, 0.253);padding-top:10px;"><strong>Delivery Fee</strong> <span style="float:right;">{{ active_order_holder.fee }}</span></h3>
+      <h3  v-if="order_holder[0].state==0&&order_holder[0].bank_money" style="text-align:left;border-top:1px solid rgba(0, 0, 0, 0.253);padding-top:10px;"><strong>Bank</strong> <span style="float:right;">{{ order_holder[0].bank_money}}</span></h3>
+     
+      <h3 style="text-align:left;border-top:1px solid rgba(0, 0, 0, 0.253);padding-top:10px;"><strong>Total</strong> <span style="float:right;">{{ active_order_holder.order_price*1+(active_order_holder.fee?active_order_holder.fee:0)*1}}</span></h3>
+    </div>
+    
+    <div style="text-align:center;font-size:1.2em;margin-top:20px;" id="footer_display">
+     Delivery PH : 0945488888 - 0954588888/ ACC No:1000292738618 
+     </div>
+    <div style="text-align:center;font-size:1em;margin-top:20px;" id="footer_display">
+      Developed By AMA / +251943236237 
+      </div>
+     
+      </b-card>
+      <div  style="background-color: white;"> 
+      
+      <div  v-if="order_holder[0].state==1" class="col-md-6">
+        <div  style="text-align:left;padding:20px;font-size:1.2em;color:black;">
+        <input type="checkbox" @change="type_bank=!type_bank;type=0;" :checked="type_bank?true:false">  is Bank
+      </div>
+      </div>
+      <div>
+        </div>
+      
+        
+    </div>
+    <div v-if="type" style="padding:10px;width:100%;">
+      <input style="margin-bottom:10px;" type="text" class="form-control" placeholder="full name" v-model="full_name" required> 
+      <input type="text" class="form-control" placeholder="phone number" v-model="phone_number" required> 
+    </div>
+    <div v-if="type_bank" style="padding:10px;width:100%;background:white;">
+      <select style="margin-bottom:10px;background:white;"  class="form-control"  v-model="bank" required>
+        <option value="0">Select Bank</option>
+        <option :value="bank.id" v-for="bank in banks" :key="bank.id" style="color:black;">{{bank.name}}</option>
+      </select> 
+      <input style="margin-bottom:10px;background:white;" placeholder="Money" class="form-control"  v-model="bank_money" required/>
+    </div>
+    <div>
+  <b-button v-if="order_holder[0].isflaged==0&&order_holder[0].state==1"  style="width:100%;text-align:left;margin-top:10px;background:rgb(197, 4, 4);border:0;border-radius:0px;padding:15px;" @click="payed(order_holder[0].folder_id)">Paid <span style="float:right;"><i class="fas fa-arrow-right"></i></span></b-button>
 </div>
   </div>
 </b-modal>
+<b-modal :id="'post-update-modal-order-config'" :size="'lg'">
+<div style="padding-left:20px;padding-top:15px;padding-bottom:5px;border-bottom:1px solid rgba(214,214,214);font-size:1.3em;">Change Order <span><i class="fas fa-times" style="float:right;margin-right:20px;margin-top:5px;color:grey;" @click="closemoadl('post-update-modal-order-config')"></i></span></div>
+<div style="background-color: black;" >
+<b-card style="color:black;border: 0;border-radius: 0;" id="print-card" >
+ <form
+ style="padding:30px;padding-top:15px;margin-bottom:35px;"
+@submit.prevent="changeconfig()"
+>
+<div style="text-align:left;padding:10px;font-size:1.2em;">
+<input type="checkbox" @change="configform.isdelivery=!configform.isdelivery" :checked="configform.isdelivery?true:false" class="input_holder">  <i class="fas fa-truck"></i> 
+</div>
+<div class="form-group row" >
+<select  required
+style="background-color:white !important;"
+ v-model="configform.waiter"
+ name="waiter"
+ placeholder="Waiter"
+ class="form-control"
+ :class="{ 'is-invalid': configform.errors.has('waiter') }">
+ <option value="">Select Waiter</option>
+ <option :value="user.id" v-for="user in users" :key="user.id">{{ user.first_name+' '+user.middle_name+' '+user.last_name }}</option>
+</select>
+<has-error :form="configform" field="waiter"></has-error>
+</div>
+<div class="form-group row" v-if="!configform.isdelivery">
+ <label>Table Name</label>
+ <input
+ required
+   v-model="configform.table_name"
+   name="table_name"
+   placeholder="table_name"
+   class="form-control"
+   :class="{ 'is-invalid': configform.errors.has('table_name') }"
+ />
+ <has-error :form="configform" field="table_name"></has-error>
+</div>
+<div class="form-group row" v-if="configform.isdelivery">
+ <label>Phone Number</label>
+ <input
+ required
+   v-model="configform.phone_number"
+   name="phone_number"
+   placeholder="phone_number"
+   class="form-control"
+   :class="{ 'is-invalid': configform.errors.has('phone_number') }"
+ />
+ <has-error :form="configform" field="phone_number"></has-error>
+</div>
+<div class="form-group row" v-if="configform.isdelivery">
+ <label>Fee</label>
+ <input
+ required
+   v-model="configform.fee"
+   name="fee"
+   placeholder="fee"
+   class="form-control"
+   :class="{ 'is-invalid': configform.errors.has('fee') }"
+ />
+ <has-error :form="configform" field="fee"></has-error>
+</div>
+<div  style='border-top:1px solid rgba(0.5,0.5,0.5,0.3);padding-top:10px;margin-top:15px;'>
+<div class="float-right">
+  <b-button type="submit" class="btn-primary" >
+    Update
+  </b-button>
+</div>
+</div>
+</form>
+ </b-card>
+<div>
+</div>
+</div>
+</b-modal>
  </div>
 </template>
-
-
 <style scoped>
-.search-controller{
- border-left:0;
- border-top-right-radius: 10px;
- border-bottom-right-radius: 10px;
-}
-::placeholder {
-color: black;
- font-style: italic;
- font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
- font-size: 1em;
-}
-.grade-icon{
- color:#fbcf00;
- font-size: 1.5em;
-}
-
-.close{
-   color:blacksmoke;
-   opacity: 1;
-}
-
-.card {
- position: relative;
-   display: flex;
-   flex-direction: column;
-   min-width: 0;
-   word-wrap: break-word;
-   background-color:white;
-   background-clip: border-box;
-   border: 0 solid #d9dee3;
-   border-radius: 0.5rem;
-}
-.bg-gradient-danger{
- border-radius: 5px !important;
-}
-.bg-gradient-danger:hover{
- background:transparent !important;
- color:black;
-}
-.bg-gradient-danger:hover .top-1{
-  position: relative;
- visibility:visible;
- top:0;
- width:100%;
- border:0;
- border-top:1.5px solid blue;
-}
-.bg-gradient-danger:hover .top-2{
-position: relative;
- visibility:visible;
- bottom:0;
- float:right;
- width:100%;
- border-bottom:1.5px solid blue;  
-}
-.top-1{
- position: relative;
- visibility:hidden;
- top:0;
- width:20%;
- border:0;
- z-index: 0;
- border-top:1px solid blue;
- transition: all 0.700s;
- padding-bottom: 10px;
-}
-.top-2{
- position: relative;
- z-index: 0;
- visibility:hidden;
- bottom:0;
- float:right;
- width:20%;
- border:0;
- border-bottom:1px solid blue;
- transition: all 0.700s;
- padding-top:10px;
-}
-select {
- height: 40px;
- border: 0.5px solid #ccc;
- border-radius: 5px;
- background-color:#000;
- box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
- font-size: 16px;
- color: #000;
-}
-
-select:hover {
- border-color: #000;
- box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-}
-
-select option {
- padding: 10px;
- cursor: pointer;
-}
-
-select option:hover {
- background-color: #ccc;
-} 
-.logo-dis{
- background: url('/logo.png');
- height: 100px;
- width:100px;
- background-size: cover;
-}
-
-
-.panel{
-    padding: 0;
-   border-radius: 10px;
-   border: none;
-   box-shadow: 0 0 0 5px rgba(0,0,0,0.05),0 0 0 10px rgba(0,0,0,0.05);
-}
-.panel .panel-heading{
-   padding: 20px 15px;
-   border-radius: 10px 10px 0 0;
-   margin: 0;
-}
-.panel .panel-heading .title{
-   color:#000;
-   font-size: 28px;
-   font-weight: 500;
-   text-transform: capitalize;
-   line-height: 40px;
-   margin: 0;
-}
-.panel .panel-heading .btn{
-   color: rgba(255,255,255,0.5);
-   background: transparent;
-   font-size: 16px;
-   text-transform: capitalize;
-   border: 2px solid #000;
-   border-radius: 50px;
-   transition: all 0.3s ease 0s;
-}
-.panel .panel-heading .btn:hover{
-   color:#000;
-   text-shadow: 3px 3px rgba(255,255,255,0.2);
-}
-.panel .panel-heading .form-control{
-   color:#000;
-   background-color: transparent;
-   width: 35%;
-   height: 40px;
-   border: 2px solid #000;
-   border-radius: 20px;
-   display: inline-block;
-   transition: all 0.3s ease 0s;
-}
-.panel .panel-heading .form-control:focus{
-   background-color: rgba(255,255,255,0.2);
-   box-shadow: none;
-   outline: none;
-}
-.panel .panel-heading .form-control::placeholder{
-   color: rgba(255,255,255,0.5);
-   font-size: 15px;
-   font-weight: 500;
-}
-.panel .panel-body{ padding: 0; }
-.panel .panel-body .table thead tr th{
-   color:#000;
-   background-color: rgba(255, 255, 255, 0.2);
-   font-size: 16px;
-   font-weight: 500;
-   text-transform: uppercase;
-   padding: 12px;
-   border: none;
-}
-.panel .panel-body .table tbody tr td{
-   color:#000;
-   font-size: 15px;
-   padding: 10px 12px;
-   vertical-align: middle;
-   border: none;
-}
-.panel .panel-body .table tbody tr:nth-child(even){ background-color: rgba(255,255,255,0.05); }
-.panel .panel-body .table tbody .action-list{
-   padding: 0;
-   margin: 0;
-   list-style: none;
-}
-.panel .panel-body .table tbody .action-list li{
-   display: inline-block;
-   margin: 0 5px;
-}
-.panel .panel-body .table tbody .action-list li a{
-   color:#000;
-   font-size: 15px;
+  .search-controller{
+   border-left:0;
+   border-top-right-radius: 10px;
+   border-bottom-right-radius: 10px;
+  }
+  ::placeholder {
+  color: black;
+   font-style: italic;
+   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+   font-size: 1em;
+  }
+  .grade-icon{
+   color:#fbcf00;
+   font-size: 1.5em;
+  }
+  
+  .close{
+     color:blacksmoke;
+     opacity: 1;
+  }
+  
+  .card {
    position: relative;
-   z-index: 1;
-   transition: all 0.3s ease 0s;
-}
-.panel .panel-body .table tbody .action-list li a:hover{ text-shadow: 3px 3px 0 rgba(255,255,255,0.3); }
-.panel .panel-body .table tbody .action-list li a:before,
-.panel .panel-body .table tbody .action-list li a:after{
-   content: attr(data-tip);
-   color:#000;
-   background-color: #111;
-   font-size: 12px;
-   padding: 5px 7px;
-   border-radius: 4px;
-   text-transform: capitalize;
-   display: none;
-   transform: translateX(-50%);
-   position: absolute;
-   left: 50%;
-   top: -32px;
-   transition: all 0.3s ease 0s;
-}
-.panel .panel-body .table tbody .action-list li a:after{
-   content: '';
-   height: 15px;
-   width: 15px;
-   padding: 0;
-   border-radius: 0;
-   transform: translateX(-50%) rotate(45deg);
-   top: -18px;
-   z-index: -1;
-}
-.panel .panel-body .table tbody .action-list li a:hover:before,
-.panel .panel-body .table tbody .action-list li a:hover:after{
-   display: block;
-}
-.panel .panel-footer{
-   color:#000;
-   background-color: transparent;
-   padding: 15px;
-   border: none;
-}
-.panel .panel-footer .col{ line-height: 35px; }
-.pagination{ margin: 0; }
-.pagination li a{
-   color:#000;
-   background-color: transparent;
-   border: 2px solid transparent;
-   font-size: 18px;
-   font-weight: 500;
-   text-align: center;
-   line-height: 31px;
-   width: 35px;
-   height: 35px;
-   padding: 0;
-   margin: 0 3px;
-   border-radius: 50px;
-   transition: all 0.3s ease 0s;
-}
-.pagination li a:hover{
-   color:#000;
-   background-color: transparent;
-   border-color: rgba(255,255,255,0.2);
-}
-.pagination li a:focus,
-.pagination li.active a,
-.pagination li.active a:hover{
-   color:#000;
-   background-color: transparent;
-   border-color:#000;
-}
-.pagination li:first-child a,
-.pagination li:last-child a{
-   border-radius: 50%;
-}
-@media only screen and (max-width:767px){
-   .panel .panel-heading .title{
-       text-align: center;
-       margin: 0 0 10px;
-   }
-   .panel .panel-heading .btn_group{ text-align: center; }
-}
-
-</style>
+     display: flex;
+     flex-direction: column;
+     min-width: 0;
+     word-wrap: break-word;
+     background-color:white;
+     background-clip: border-box;
+     border: 0 solid #d9dee3;
+     border-radius: 0.5rem;
+  }
+  .bg-gradient-danger{
+   border-radius: 5px !important;
+  }
+  .bg-gradient-danger:hover{
+   background:transparent !important;
+   color:black;
+  }
+  .bg-gradient-danger:hover .top-1{
+    position: relative;
+   visibility:visible;
+   top:0;
+   width:100%;
+   border:0;
+   border-top:1.5px solid blue;
+  }
+  .bg-gradient-danger:hover .top-2{
+  position: relative;
+   visibility:visible;
+   bottom:0;
+   float:right;
+   width:100%;
+   border-bottom:1.5px solid blue;  
+  }
+  .top-1{
+   position: relative;
+   visibility:hidden;
+   top:0;
+   width:20%;
+   border:0;
+   z-index: 0;
+   border-top:1px solid blue;
+   transition: all 0.700s;
+   padding-bottom: 10px;
+  }
+  .top-2{
+   position: relative;
+   z-index: 0;
+   visibility:hidden;
+   bottom:0;
+   float:right;
+   width:20%;
+   border:0;
+   border-bottom:1px solid blue;
+   transition: all 0.700s;
+   padding-top:10px;
+  }
+  select {
+   height: 40px;
+   border: 0.5px solid #ccc;
+   border-radius: 5px;
+   background-color:#000;
+   box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+   font-size: 16px;
+   color: #000;
+  }
+  
+  select:hover {
+   border-color: #000;
+   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  }
+  
+  select option {
+   padding: 10px;
+   cursor: pointer;
+  }
+  
+  select option:hover {
+   background-color: #ccc;
+  } 
+  .logo-dis{
+   background: url('/logo.png');
+   height: 100px;
+   width:100px;
+   background-size: cover;
+  }
+  
+  
+  .panel{
+      padding: 0;
+     border-radius: 10px;
+     border: none;
+     box-shadow: 0 0 0 5px rgba(0,0,0,0.05),0 0 0 10px rgba(0,0,0,0.05);
+  }
+  .panel .panel-heading{
+     padding: 20px 15px;
+     border-radius: 10px 10px 0 0;
+     margin: 0;
+  }
+  .panel .panel-heading .title{
+     color:#000;
+     font-size: 28px;
+     font-weight: 500;
+     text-transform: capitalize;
+     line-height: 40px;
+     margin: 0;
+  }
+  .panel .panel-heading .btn{
+     color: rgba(255,255,255,0.5);
+     background: transparent;
+     font-size: 16px;
+     text-transform: capitalize;
+     border: 2px solid #000;
+     border-radius: 50px;
+     transition: all 0.3s ease 0s;
+  }
+  .panel .panel-heading .btn:hover{
+     color:#000;
+     text-shadow: 3px 3px rgba(255,255,255,0.2);
+  }
+  .panel .panel-heading .form-control{
+     color:#000;
+     background-color: transparent;
+     width: 35%;
+     height: 40px;
+     border: 2px solid #000;
+     border-radius: 20px;
+     display: inline-block;
+     transition: all 0.3s ease 0s;
+  }
+  .panel .panel-heading .form-control:focus{
+     background-color: rgba(255,255,255,0.2);
+     box-shadow: none;
+     outline: none;
+  }
+  .panel .panel-heading .form-control::placeholder{
+     color: rgba(255,255,255,0.5);
+     font-size: 15px;
+     font-weight: 500;
+  }
+  .panel .panel-body{ padding: 0; }
+  .panel .panel-body .table thead tr th{
+     color:#000;
+     background-color: rgba(255, 255, 255, 0.2);
+     font-size: 16px;
+     font-weight: 500;
+     text-transform: uppercase;
+     padding: 12px;
+     border: none;
+  }
+  .panel .panel-body .table tbody tr td{
+     color:#000;
+     font-size: 15px;
+     padding: 10px 12px;
+     vertical-align: middle;
+     border: none;
+  }
+  .panel .panel-body .table tbody tr:nth-child(even){ background-color: rgba(255,255,255,0.05); }
+  .panel .panel-body .table tbody .action-list{
+     padding: 0;
+     margin: 0;
+     list-style: none;
+  }
+  .panel .panel-body .table tbody .action-list li{
+     display: inline-block;
+     margin: 0 5px;
+  }
+  .panel .panel-body .table tbody .action-list li a{
+     color:#000;
+     font-size: 15px;
+     position: relative;
+     z-index: 1;
+     transition: all 0.3s ease 0s;
+  }
+  .panel .panel-body .table tbody .action-list li a:hover{ text-shadow: 3px 3px 0 rgba(255,255,255,0.3); }
+  .panel .panel-body .table tbody .action-list li a:before,
+  .panel .panel-body .table tbody .action-list li a:after{
+     content: attr(data-tip);
+     color:#000;
+     background-color: #111;
+     font-size: 12px;
+     padding: 5px 7px;
+     border-radius: 4px;
+     text-transform: capitalize;
+     display: none;
+     transform: translateX(-50%);
+     position: absolute;
+     left: 50%;
+     top: -32px;
+     transition: all 0.3s ease 0s;
+  }
+  .panel .panel-body .table tbody .action-list li a:after{
+     content: '';
+     height: 15px;
+     width: 15px;
+     padding: 0;
+     border-radius: 0;
+     transform: translateX(-50%) rotate(45deg);
+     top: -18px;
+     z-index: -1;
+  }
+  .panel .panel-body .table tbody .action-list li a:hover:before,
+  .panel .panel-body .table tbody .action-list li a:hover:after{
+     display: block;
+  }
+  .panel .panel-footer{
+     color:#000;
+     background-color: transparent;
+     padding: 15px;
+     border: none;
+  }
+  .panel .panel-footer .col{ line-height: 35px; }
+  .pagination{ margin: 0; }
+  .pagination li a{
+     color:#000;
+     background-color: transparent;
+     border: 2px solid transparent;
+     font-size: 18px;
+     font-weight: 500;
+     text-align: center;
+     line-height: 31px;
+     width: 35px;
+     height: 35px;
+     padding: 0;
+     margin: 0 3px;
+     border-radius: 50px;
+     transition: all 0.3s ease 0s;
+  }
+  .pagination li a:hover{
+     color:#000;
+     background-color: transparent;
+     border-color: rgba(255,255,255,0.2);
+  }
+  .pagination li a:focus,
+  .pagination li.active a,
+  .pagination li.active a:hover{
+     color:#000;
+     background-color: transparent;
+     border-color:#000;
+  }
+  .pagination li:first-child a,
+  .pagination li:last-child a{
+     border-radius: 50%;
+  }
+  @media only screen and (max-width:767px){
+     .panel .panel-heading .title{
+         text-align: center;
+         margin: 0 0 10px;
+     }
+     .panel .panel-heading .btn_group{ text-align: center; }
+  }
+  
+  </style>
 
 <script>
 export default {
- data() {
-   return {
-     form:new window.Form({
-     search:''
-           }),
-     updateindex:-1,
-     columns: [
-       { label: "#" },
-       { label: "Phone Number", field: "phone_number" },
-       { label: "Waiter", field: "waiter.first_name" },
-       { label: "isDelivery", field: "isdelivery" },
-       { label: "Price", field: "price" },
-       { label: "Table Name", field: "table_name" },
-       { label: "Manage" },
-     ],
-     printing:0,
-     orders: {data:[]},
-     order_holder:{},
-     display: false,
-     active_order:'w',
-     url: "",
-     title:'',
-     fee:'',
-     code:'',
-     active_index:-1,
-     selected_titles:[],
-     isedit:-1,
-     full_name:'',
-     phone_number:'',
-     bank:0,
-     bank_money:0,
-     active_order_holder:{},
-     banks:[],
-     type:0,
-     type_bank:0,
-     configform:new window.Form({
-      fee:0,
-      isdelivery:0,
-      phone_number:'',
-      waiter:'',
-      table_name:'',
-      folder_id:'',
-      old_isdelivery:0
-     }),
-     users:[],
-     order: new window.Form({
-       title: "",
-       attachment:"",
-       id: "",
-     }),
-   };
- },
- beforeMount() {
-   this.getmyorder()
-   this.getmybank()
-   this.getAllUsers()
- },
- methods: {
-  getAllUsers() {
-      this.$store.dispatch('admin/AdminController',{'data':{},'method':'get','api':'admin_get_waiter_users','variable':'users'}, { root: true }).then(() => {
-        this.users=this.$store.getters['admin/Getusers']
-       
-      })
-    },
-  getDeliveryFee(order){
-    var fee=0;
-    order.forEach(element => {
-      fee+=element.fee*1
+data() {
+ return {
+  from:'',
+  to:'',
+   form:new window.Form({
+   search:''
+         }),
+   updateindex:-1,
+   columns: [
+     { label: "#" },
+     { label: "Phone Number", field: "phone_number" },
+     { label: "Waiter", field: "waiter.first_name" },
+     { label: "isDelivery", field: "isdelivery" },
+     { label: "Price", field: "price" },
+     { label: "Table Name", field: "table_name" },
+     { label: "Manage" },
+   ],
+   printing:0,
+   orders: {data:[]},
+   order_holder:{},
+   display: false,
+   active_order:'w',
+   url: "",
+   title:'',
+   fee:'',
+   code:'',
+   active_index:-1,
+   selected_titles:[],
+   isedit:-1,
+   full_name:'',
+   phone_number:'',
+   bank:0,
+   bank_money:0,
+   active_order_holder:{},
+   banks:[],
+   type:0,
+   type_bank:0,
+   configform:new window.Form({
+    fee:0,
+    isdelivery:0,
+    phone_number:'',
+    waiter:'',
+    table_name:'',
+    folder_id:'',
+    old_isdelivery:0
+   }),
+   isbank:0,
+   filtered_bank:{data:[]},
+   users:[],
+   order: new window.Form({
+     title: "",
+     attachment:"",
+     id: "",
+   }),
+ };
+},
+beforeMount() {
+ this.getmyorder()
+ this.getmybank()
+ this.getAllUsers()
+},
+methods: {
+filteronlyBank(){
+  this.filtered_bank.data=[]
+  if(this.isbank){
+    this.orders.data.forEach(element => {
+      if(element.bank){
+        this.filtered_bank.data.push(element)
+      }
     });
-    return fee
-  },
-   PrintData(){
-     this.printing=1;
-     var toprint=document.getElementById('print-card')
-     var newwindow=window.open('','printwindow')
-     newwindow.document.open()
-     newwindow.document.write('<html><head><style>#footer_display{font-size: 1.7em !important;text-align: center !important;}img{height: 100px;width:100px;}h3{font-size: 2em !important;margin-bottom:0px !important;}table th{text-align: start !important;padding-left:50px !important;color:black !important;background: #e7c21e ;border-top: 1px solid black !important;border-left: 1px solid black !important;border-bottom: 1px solid black !important;font-size: 2em !important;}.last{  border-right: 1px solid black !important;}table td{    font-size: 2em !important;border-left: 1px solid black !important;    border-bottom: 1px solid black !important;}</style></head><body onload="window.print()" style="margin:0;">'+toprint.innerHTML+'</body></html>')
-     newwindow.document.close()
-     setTimeout(function(){newwindow.close();},500)
-     this.printing=0
-
-   },
-   payed(id){
-     if(!this.type_bank)
-     this.bank=0
-     window.Swal.fire({
-           title: 'are you sure',
-           text: 'this table paid',
-           icon: 'warning',
-           showCancelButton: true,
-           confirmButtonColor: '#3085d6',
-           cancelButtonColor: '#d33',
-           confirmButtonText: 'Yes'
-         }).then((result) => {
-           if (result.value) {
-             this.$store.dispatch('admin/AdminController',{'data':{bank:this.bank,bank_money:this.bank_money},'method':'post','api':'admin_payed_order','variable':'status','params':id}, { root: true }).then(() => {
-       this.orders.data.splice(this.active_index,1)
-       this.active_index=-1
+  }
+},
+Reorder(ord){
+  localStorage.setItem('order_id',ord.folder_id)
+  localStorage.setItem('orders_id',ord.orders)
+     this.$router.push('/manage/order')
+},
+FlagOrder(ord) {
+   window.Swal.fire({
+         title: 'are you sure',
+         text: 'you want to Flag this order',
+         icon: 'warning',
+         showCancelButton: true,
+         confirmButtonColor: '#3085d6',
+         cancelButtonColor: '#d33',
+         confirmButtonText: 'Yes'
+       }).then((result) => {
+         if (result.value) {
+           this.$store.dispatch('admin/AdminController',{'data':{},'method':'get','api':'admin_flag_order','variable':'status','params':ord.folder_id+'/'+ord.orders}, { root: true }).then(() => {
+      window.Toast.fire({
+         icon: "success",
+         title:'order Flaged successfuly',
+       });
        this.$bvModal.hide("post-update-modal-order");
-       window.Toast.fire({
-           icon: "success",
-           title:'order Paid successfuly',
-         });
-     })
-           }
-    });
-    
-   },
-   changeOrder(e){
-     this.order_holder={}
-     this.orders={data:[]}
-     this.active_order=(e.target.value=='w'?0:(e.target.value=='f'?1:2))
-     this.active_order=(e.target.value=='wd'?3:(e.target.value=='dd'?4:this.active_order))
-     this.getmyorder()
-   },
-   changeconfig(){
-    this.$store.dispatch('admin/AdminController',{'data':this.configform,'method':'post','api':'admin_change_config','variable':'order'}, { root: true }).then(() => {
-       this.orders.data[this.active_index]=this.$store.getters['admin/Getorder']
-       this.configform.reset()
-       this.active_index=-1
-       this.$bvModal.hide('post-update-modal-order-config')
-       this.getmyorder()
-     }).catch((err) => {
-          this.configform.errors.errors = err;
-        });
-   },
-   attachmentprocessor (e) {
-     var photos = e.target.files[0]
-     var file = photos
-     var limit = 1024 * 1024 * 2
-     if (file.size <= limit) {
-       this.order.attachment = file
-       this.url = URL.createObjectURL(file)
-     }
-   },
-   FilterOrder(){
-      this.$store.dispatch('admin/AdminController',{'data':{search:this.form.search},'method':'post','api':'admin_search_order','variable':'order'}, { root: true }).then(() => {
-       this.orders=this.$store.getters['admin/Getorder']
-     })
-   },
-   getmybank() {
-     this.$store.dispatch('admin/AdminController',{'data':{},'method':'get','api':'admin_get_bank','variable':'bank'}, { root: true }).then(() => {
-       this.banks=this.$store.getters['admin/Getbank'].data
-     })
-   },
-   closemoadl(val){
-     this.$bvModal.hide(val)
-   },
-   resetform() {
-     this.order.reset();
-     this.url = "";
-     this.display=false
-     this.updateindex=-1
-   },
-   getimage(image){
-     return window.image_url+image
-   },
-   changeconfigEdit(order,index){
-    this.active_index=index
-    this.configform.waiter=(order.waiter?order.waiter.id:'')
-    this.configform.isdelivery=order.isdelivery
-    this.configform.old_isdelivery=order.isdelivery
-    this.configform.fee=order.fee
-    this.configform.table_name=order.table_name
-    this.configform.folder_id=order.folder_id
-   },
-   ViewOrder(order,index) {
-    this.active_index=index
-    this.active_order_holder=order
-    this.bank=''
-    this.bank_money=0
-    this.type_bank=false
-    console.log(this.active_index)
-     this.$store.dispatch('admin/AdminController',{'data':{},'method':'get','api':'admin_view_order','variable':'order','params':order.folder_id}, { root: true }).then(() => {
-       this.order_holder=this.$store.getters['admin/Getorder']
-       if(this.order_holder.length)
-       this.order_holder[0].phone_number=order.phone_number
-     })
-   },
-   getmyorder(page=1) {
-     this.$store.dispatch('admin/AdminController',{'data':{},'method':'get','api':'admin_get_order','variable':'order','params':this.active_order+'/order?page='+page}, { root: true }).then(() => {
-       this.orders=this.$store.getters['admin/Getorder']
-     })
-   },
-   addOrder(order){
-     localStorage.setItem('order_id',order.folder_id)
-       this.$router.push('/manage/order')
-   },
-   Flag(id,index) {
-     window.Swal.fire({
-           title: 'are you sure',
-           text: 'you want to Flag this order',
-           icon: 'warning',
-           showCancelButton: true,
-           confirmButtonColor: '#3085d6',
-           cancelButtonColor: '#d33',
-           confirmButtonText: 'Yes'
-         }).then((result) => {
-           if (result.value) {
-             this.$store.dispatch('admin/AdminController',{'data':{},'method':'get','api':'admin_flag_order','variable':'status','params':id}, { root: true }).then(() => {
-        window.Toast.fire({
-           icon: "success",
-           title:'order Flaged successfuly',
-         });
-       this.orders.data[index].isflaged=1;
-     }).catch(()=>{
-        window.Toast.fire({
-           icon: "error",
-           title:"order can't be Flaged !!",
-         });
-     })
-           }
-    });
-   },
-   UnFlag(id,index) {
-     window.Swal.fire({
-           title: 'are you sure',
-           text: 'you want to unFlag this order',
-           icon: 'warning',
-           showCancelButton: true,
-           confirmButtonColor: '#3085d6',
-           cancelButtonColor: '#d33',
-           confirmButtonText: 'Yes'
-         }).then((result) => {
-           if (result.value) {
-             this.$store.dispatch('admin/AdminController',{'data':{},'method':'get','api':'admin_un_flag_order','variable':'status','params':id}, { root: true }).then(() => {
-        window.Toast.fire({
-           icon: "success",
-           title:'order unFlag successfuly',
-         });
-       this.orders.data[index].isflaged=0;
-     }).catch(()=>{
-        window.Toast.fire({
-           icon: "error",
-           title:"order can't be unFlag !!",
-         });
-     })
-           }
-    });
-   },
-   deleteorder(id,index) {
-     window.Swal.fire({
-           title: 'are you sure',
-           text: 'you want to delete this order',
-           icon: 'warning',
-           showCancelButton: true,
-           confirmButtonColor: '#3085d6',
-           cancelButtonColor: '#d33',
-           confirmButtonText: 'Yes'
-         }).then((result) => {
-           if (result.value) {
-             this.$store.dispatch('admin/AdminController',{'data':{},'method':'delete','api':'admin_delete_order','variable':'status','params':id}, { root: true }).then(() => {
-        window.Toast.fire({
-           icon: "success",
-           title:'order deleted successfuly',
-         });
-       this.orders.data.splice(index,1)
-     }).catch(()=>{
-        window.Toast.fire({
-           icon: "error",
-           title:"order can't be deleted !!",
-         });
-     })
-           }
-    });
-   },
-   update() {
-    var form =window.VFToFD(this.order);
-     console.log(form)
+   }).catch(()=>{
+      window.Toast.fire({
+         icon: "error",
+         title:"order can't be Flaged !!",
+       });
+   })
+         }
+  });
+ },
+getAllUsers() {
+    this.$store.dispatch('admin/AdminController',{'data':{},'method':'get','api':'admin_get_waiter_users','variable':'users'}, { root: true }).then(() => {
+      this.users=this.$store.getters['admin/Getusers']
+     
+    })
+  },
+getDeliveryFee(order){
+  var fee=0;
+  order.forEach(element => {
+    fee+=element.fee*1
+  });
+  return fee
+},
+ PrintData(){
+   this.printing=1;
+   var toprint=document.getElementById('print-card')
+   var newwindow=window.open('','printwindow')
+   newwindow.document.open()
+   newwindow.document.write('<html><head><style>body {  font-family: Arial, sans-serif;  margin: 0;  padding: 0;  background-color: #f9f9f9;  color: black;}.receipt {  max-width: 100%;  margin: 20px auto;  background: #fff;  border: 1px solid #ddd;  border-radius: 8px;  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);  padding: 20px;}/* Header Section */.header {  display: flex;  justify-content: space-between;  align-items: center;  margin-bottom: 20px;}.header .logo {  width: 150px;}.header .title {  text-align: right;  font-size: 1.5em !important;  color:black;}.title_sub{  text-align: right;  font-size: 1.3em !important;  color:black;}.header h1 {  margin: 0;  font-size: 1.5em !important;  text-transform: uppercase;}.header p {  font-size: 1.3em !important;  color: black;  margin: 2px 0;}/* Receipt Details */.details {  font-size: 1.5em !important;  line-height: 1.5;  margin-bottom: 15px;  text-align: left;  color:black !important;}.details p {  margin: 4px 0;}/* Table Styles */.table1 {  width: 100%;  border-collapse: collapse;  margin-bottom: 15px;}.table1 th, .table1 td {  text-align: left;  padding: 8px 10px;  border-bottom: 1px solid #ddd;  font-family: "Arial", sans-serif;  font-size: 1.5em !important;  color:black !important;}.table1 th {  background-color: #f4f4f4;  text-align: left;  font-weight: bold;  text-transform: uppercase;}.table1 td {  font-size: 1.6em !important;  text-align: left;}.table1 .order-name {  text-align: left;}/* Table Row Hover */.table1 tr:hover {  background-color: #f9f9f9;}/* Total Section */.total {  text-align: left;  color:black !important;   font-size: 2em  !important;  margin-top: 5px;}/* Footer Section */.footer {  display: flex;  justify-content: space-between;  align-items: center;  margin-top: 5px;  font-size: 1.5em !important;  color: black !important;  border-top: 1px solid #ddd;  padding-top: 10px;}.footer .contact {  font-size: 1em !important;  color: black;}.footer .contact p {  margin: 4px 0;}.footer .qrcode {  display: block;  height: 150px !important;width: 150px !important;  margin: 0 auto;}.footer .qr-section {  text-align: right;}/* Centered Footer Text */.footer-center {  text-align: center;  font-size: 1.5em !important;  color: black !important;  margin-top: 10px;}.extras{display:none !important;}#footer_display{font-size: 1.7em !important;text-align: center !important;}img{height: 100px;width:100px;}h3{font-size: 2em !important;margin-bottom:0px !important;}table th{text-align: start !important;padding-left:50px !important;color:black !important;background: #e7c21e ;border-top: 1px solid black !important;border-left: 1px solid black !important;border-bottom: 1px solid black !important;font-size: 2em !important;}.last{  border-right: 2px solid black !important;}table td{    font-size: 2em !important;border-left: 1px solid black !important;    border-bottom: 1px solid black !important;}</style></head><body onload="window.print()" style="margin:0;">'+toprint.innerHTML+'</body></html>')
+   newwindow.document.close()
+   setTimeout(function(){newwindow.close();},500)
+   this.printing=0
 
-     this.$store
-       .dispatch('admin/AdminController',{'data':form,'method':'post','api':'admin_update_order','variable':'order'}, { root: true })
-       .then(() => {
-         var data = this.$store.getters["admin/Getorder"];
-         this.orders.data[this.updateindex].id=data.id
-         this.orders.data[this.updateindex].title=data.title
-         this.orders.data[this.updateindex].attachment=data.attachment
-         this.orders.data[this.updateindex].created_at=data.created_at
-         this.display = false;
-         this.$bvModal.hide("post-update-modal-order");
-          window.Toast.fire({
-           icon: "success",
-           title:'order updated successfuly',
-         });
-       })
-       .catch((err) => {
-         this.order.errors.errors = err;
+ },
+ payed(id){
+   if(!this.type_bank)
+   this.bank=0
+   window.Swal.fire({
+         title: 'are you sure',
+         text: 'this table paid',
+         icon: 'warning',
+         showCancelButton: true,
+         confirmButtonColor: '#3085d6',
+         cancelButtonColor: '#d33',
+         confirmButtonText: 'Yes'
+       }).then((result) => {
+         if (result.value) {
+           this.$store.dispatch('admin/AdminController',{'data':{bank:this.bank,bank_money:this.bank_money},'method':'post','api':'admin_payed_order','variable':'status','params':id}, { root: true }).then(() => {
+     this.orders.data.splice(this.active_index,1)
+     this.active_index=-1
+     this.$bvModal.hide("post-update-modal-order");
+     window.Toast.fire({
+         icon: "success",
+         title:'order Paid successfuly',
        });
-   },
-   create() {
-     var form =window.VFToFD(this.order);
-     this.$store.dispatch('admin/AdminController',{'data':form,'method':'post','api':'admin_create_order','variable':'order'}, { root: true }).then(() => {
-         this.orders.data.unshift(this.$store.getters["admin/Getorder"]);
-         this.display = false;
-         this.$bvModal.hide("post-update-modal-order");
-         window.Toast.fire({
-           icon: "success",
-           title:'order created successfuly',
-         });
-       })
-       .catch((err) => {
-         this.order.errors.errors = err;
-       });
+   })
+         }
+  });
+  
+ },
+ changeOrder(e){
+  this.from=''
+  this.to=''
+  this.isbank=0
+   this.order_holder={}
+   this.orders={data:[]}
+   this.active_order=(e.target.value=='w'?0:(e.target.value=='f'?1:2))
+   this.active_order=(e.target.value=='wd'?3:(e.target.value=='dd'?4:this.active_order))
+   this.getmyorder()
+ },
+ changeconfig(){
+  this.$store.dispatch('admin/AdminController',{'data':this.configform,'method':'post','api':'admin_change_config','variable':'order'}, { root: true }).then(() => {
+     this.orders.data[this.active_index]=this.$store.getters['admin/Getorder']
+     this.configform.reset()
+     this.active_index=-1
+     this.$bvModal.hide('post-update-modal-order-config')
+     this.getmyorder()
+   }).catch((err) => {
+        this.configform.errors.errors = err;
+      });
+ },
+ attachmentprocessor (e) {
+   var photos = e.target.files[0]
+   var file = photos
+   var limit = 1024 * 1024 * 2
+   if (file.size <= limit) {
+     this.order.attachment = file
+     this.url = URL.createObjectURL(file)
    }
  },
+ FilterOrder(){
+    this.$store.dispatch('admin/AdminController',{'data':{search:this.form.search},'method':'post','api':'admin_search_order','variable':'order'}, { root: true }).then(() => {
+     this.orders=this.$store.getters['admin/Getorder']
+   })
+ },
+ getmybank() {
+   this.$store.dispatch('admin/AdminController',{'data':{},'method':'get','api':'admin_get_bank','variable':'bank'}, { root: true }).then(() => {
+     this.banks=this.$store.getters['admin/Getbank'].data
+   })
+ },
+ closemoadl(val){
+   this.$bvModal.hide(val)
+ },
+ resetform() {
+   this.order.reset();
+   this.url = "";
+   this.display=false
+   this.updateindex=-1
+ },
+ getimage(image){
+   return window.image_url+image
+ },
+ changeconfigEdit(order,index){
+  this.active_index=index
+  this.configform.waiter=(order.waiter?order.waiter.id:'')
+  this.configform.isdelivery=order.isdelivery
+  this.configform.old_isdelivery=order.isdelivery
+  this.configform.phone_number=order.phone_number
+  this.configform.fee=order.fee
+  this.configform.table_name=order.table_name
+  this.configform.folder_id=order.folder_id
+ },
+ ViewOrder(order,index) {
+  this.active_index=index
+  this.active_order_holder=order
+  this.bank=''
+  this.bank_money=0
+  this.type_bank=false
+  var api='admin_view_order'
+   this.$store.dispatch('admin/AdminController',{'data':{},'method':'get','api':api,'variable':'order','params':order.folder_id}, { root: true }).then(() => {
+     this.order_holder=this.$store.getters['admin/Getorder']
+     if(this.order_holder.length)
+     this.order_holder[0].phone_number=order.phone_number
+   })
+ },
+ getmyorder(page=1) {
+  var mehto='get'
+  if(this.active_order==2)
+  mehto='post'
+  this.orders={data:[]}
+   this.$store.dispatch('admin/AdminController',{'data':{from:this.from,to:this.to},'method':mehto,'api':'admin_get_order','variable':'order','params':this.active_order+'/order?page='+page}, { root: true }).then(() => {
+     this.orders=this.$store.getters['admin/Getorder']
+   })
+ },
+ addOrder(order){
+   localStorage.setItem('order_id',order.folder_id)
+     this.$router.push('/manage/order')
+ },
+ Flag(id,index) {
+   window.Swal.fire({
+         title: 'are you sure',
+         text: 'you want to Flag this order',
+         icon: 'warning',
+         showCancelButton: true,
+         confirmButtonColor: '#3085d6',
+         cancelButtonColor: '#d33',
+         confirmButtonText: 'Yes'
+       }).then((result) => {
+         if (result.value) {
+           this.$store.dispatch('admin/AdminController',{'data':{},'method':'get','api':'admin_flag_order','variable':'status','params':id+'/'+0}, { root: true }).then(() => {
+      window.Toast.fire({
+         icon: "success",
+         title:'order Flaged successfuly',
+       });
+     this.orders.data[index].isflaged=1;
+   }).catch(()=>{
+      window.Toast.fire({
+         icon: "error",
+         title:"order can't be Flaged !!",
+       });
+   })
+         }
+  });
+ },
+ UnFlag(id,index) {
+   window.Swal.fire({
+         title: 'are you sure',
+         text: 'you want to unFlag this order',
+         icon: 'warning',
+         showCancelButton: true,
+         confirmButtonColor: '#3085d6',
+         cancelButtonColor: '#d33',
+         confirmButtonText: 'Yes'
+       }).then((result) => {
+         if (result.value) {
+           this.$store.dispatch('admin/AdminController',{'data':{},'method':'get','api':'admin_un_flag_order','variable':'status','params':id}, { root: true }).then(() => {
+      window.Toast.fire({
+         icon: "success",
+         title:'order unFlag successfuly',
+       });
+     this.orders.data[index].isflaged=0;
+   }).catch(()=>{
+      window.Toast.fire({
+         icon: "error",
+         title:"order can't be unFlag !!",
+       });
+   })
+         }
+  });
+ },
+ deleteorder(id,index) {
+   window.Swal.fire({
+         title: 'are you sure',
+         text: 'you want to delete this order',
+         icon: 'warning',
+         showCancelButton: true,
+         confirmButtonColor: '#3085d6',
+         cancelButtonColor: '#d33',
+         confirmButtonText: 'Yes'
+       }).then((result) => {
+         if (result.value) {
+           this.$store.dispatch('admin/AdminController',{'data':{},'method':'delete','api':'admin_delete_order','variable':'status','params':id}, { root: true }).then(() => {
+      window.Toast.fire({
+         icon: "success",
+         title:'order deleted successfuly',
+       });
+     this.orders.data.splice(index,1)
+   }).catch(()=>{
+      window.Toast.fire({
+         icon: "error",
+         title:"order can't be deleted !!",
+       });
+   })
+         }
+  });
+ },
+ update() {
+  var form =window.VFToFD(this.order);
+   console.log(form)
+
+   this.$store
+     .dispatch('admin/AdminController',{'data':form,'method':'post','api':'admin_update_order','variable':'order'}, { root: true })
+     .then(() => {
+       var data = this.$store.getters["admin/Getorder"];
+       this.orders.data[this.updateindex].id=data.id
+       this.orders.data[this.updateindex].title=data.title
+       this.orders.data[this.updateindex].attachment=data.attachment
+       this.orders.data[this.updateindex].created_at=data.created_at
+       this.display = false;
+       this.$bvModal.hide("post-update-modal-order");
+        window.Toast.fire({
+         icon: "success",
+         title:'order updated successfuly',
+       });
+     })
+     .catch((err) => {
+       this.order.errors.errors = err;
+     });
+ },
+ create() {
+   var form =window.VFToFD(this.order);
+   this.$store.dispatch('admin/AdminController',{'data':form,'method':'post','api':'admin_create_order','variable':'order'}, { root: true }).then(() => {
+       this.orders.data.unshift(this.$store.getters["admin/Getorder"]);
+       this.display = false;
+       this.$bvModal.hide("post-update-modal-order");
+       window.Toast.fire({
+         icon: "success",
+         title:'order created successfuly',
+       });
+     })
+     .catch((err) => {
+       this.order.errors.errors = err;
+     });
+ }
+},
 };
 </script>

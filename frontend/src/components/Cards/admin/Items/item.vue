@@ -154,7 +154,7 @@
           <div style="padding-left:20px;padding-top:15px;padding-bottom:5px;border-bottom:1px solid rgba(214,214,214);font-size:1.3em;">Link Item <span></span> <span><i class="fas fa-times" style="float:right;margin-right:20px;margin-top:5px;color:grey;" @click="closemoadl('post-link-to-menu')"></i></span></div>
       <div>
         <div v-for="menu in menu_items" :key="menu.id" class="no-body" style="padding:5px;margin-bottom:3px;background-color: transparent;">
-         <div style="color:black;padding:5px;border-radius: 3px;padding:15px;" class="menu" @click="selected_menu=menu.id" :style="selected_menu==menu.id?'background:#e7c21e;color:black;':''">{{ menu.name }}</div> 
+         <div style="color:white;padding:5px;border-radius: 3px;padding:15px;" class="menu" @click="selected_menu=menu.id" :style="selected_menu==menu.id?'background:#e7c21e;color:black;':''">{{ menu.name }}</div> 
         </div>
         <div style="margin-bottom: 10px;margin-left:20px;">
             <b-button class="btn btn-primary" @click="submitLinking">
