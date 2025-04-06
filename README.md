@@ -27,7 +27,7 @@ A modern, **table-based** restaurant management system designed to streamline or
 
 ### 🔙 Backend Setup (Lumen)
 
-
+```bash
 git clone https://github.com/amaneth404/Restaurant-Management-system-.git
 cd Restaurant-Management-system-/backend
 composer install
@@ -37,9 +37,11 @@ cp .env.example .env
 php artisan migrate
 php artisan key:generate
 php -S localhost:8000 -t public
-
+```
 
 ### Frontend (Vue.js)
+```bash
 cd Restaurant-Management-system-/frontend
 npm install
 npm run serve
+```
